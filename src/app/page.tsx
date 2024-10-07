@@ -1,101 +1,193 @@
-import Image from "next/image";
+"use client";
+import React, { useState, useEffect, useRef } from "react";
+import axios from "axios";
+import { Button } from "@/components/ui/button";
+import base64js from "base64-js";
 
-export default function Home() {
+function App() {
+  const [isRecording, setIsRecording] = useState(false);
+  const [, setAudioBlob] = useState<Blob | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  // const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | number>();
+
+  // Start listening to the microphone when the component mounts
+  const startRecording = async () => {
+    console.log("Starting recording...");
+    audioContextRef.current = new AudioContext();
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mediaRecorder = new MediaRecorder(stream);
+    // mediaRecorderRef.current = mediaRecorder;
+
+    let audioChunks: BlobPart[] = [];
+
+    mediaRecorder.ondataavailable = (event) => {
+      audioChunks.push(event.data);
+    };
+
+    mediaRecorder.onstop = async () => {
+      console.log("Recording stopped.");
+      const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+      setAudioBlob(audioBlob);
+      // Reset audio chunks for next recording
+      audioChunks = [];
+      // Send the audio to server
+      sendAudioToServer(audioBlob);
+    };
+
+    mediaRecorder.start();
+    setIsRecording(true);
+
+    // Setup silence detection
+    const audioSource = audioContextRef.current.createMediaStreamSource(stream);
+    const analyser = audioContextRef.current.createAnalyser();
+    audioSource.connect(analyser);
+    analyser.fftSize = 256;
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    const checkSilence = () => {
+      analyser.getByteFrequencyData(dataArray);
+      const volume = dataArray.reduce((a, b) => a + b, 0) / bufferLength;
+      // console.log("Volume:", volume);
+      // If silence (volume < threshold), stop recording after 0.5 seconds
+      if (volume < 5) {
+        if (!silenceTimeoutRef.current) {
+          silenceTimeoutRef.current = setTimeout(() => {
+            mediaRecorder.stop();
+            setIsRecording(false);
+          }, 500);
+        }
+      } else {
+        // If there's noise, clear the silence timeout
+        clearTimeout(silenceTimeoutRef.current);
+        silenceTimeoutRef.current = undefined;
+      }
+    };
+
+    // Check for silence periodically
+    const silenceCheckInterval = setInterval(checkSilence, 100);
+
+    // Cleanup on component unmount
+    return () => {
+      clearInterval(silenceCheckInterval);
+      if (audioContextRef.current) audioContextRef.current.close();
+      stream.getTracks().forEach((track) => track.stop());
+    };
+  };
+
+  const [audioQueue, setAudioQueue] = useState<Blob[]>([]);
+  const isPlayingRef = useRef(false);
+
+  useEffect(() => {
+    axios.get(process.env.NEXT_PUBLIC_API_SVR + "/status").then((response) => {
+      console.log("Server status:", response.data);
+    });
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("Your browser does not support audio recording.");
+      return;
+    }
+    // Create an EventSource to connect to the SSE endpoint
+    const eventSource = new EventSource(
+      process.env.NEXT_PUBLIC_API_SVR + "/response-events"
+    );
+    eventSource.onmessage = (event) => {
+      // Decode base64 audio data using base64-js
+      const base64Audio = event.data;
+      const bytes = base64js.toByteArray(base64Audio);
+
+      // Create a Blob from the array buffer
+      const audioBlob = new Blob([bytes], { type: "audio/wav" });
+
+      // Add the blob to the queue
+      setAudioQueue((prevQueue) => [...prevQueue, audioBlob]);
+    };
+
+    eventSource.onerror = (error) => {
+      console.error("Error with SSE:", error);
+      eventSource.close();
+    };
+
+    return () => {
+      console.log("Closing EventSource...");
+      eventSource.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    // Play audio chunks in order as they arrive
+    const playNext = async () => {
+      if (audioQueue.length > 0 && !isPlayingRef.current) {
+        isPlayingRef.current = true; // Mark as playing
+        const nextAudioBlob = audioQueue[0];
+
+        // Create an audio URL and play it
+        const audioUrl = URL.createObjectURL(nextAudioBlob);
+        const audio = new Audio(audioUrl);
+
+        // Play the audio and wait until it finishes
+        await audio.play();
+
+        // When the audio finishes, clean up and play the next chunk
+        audio.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+          setAudioQueue((prevQueue) => prevQueue.slice(1)); // Remove the played chunk
+          isPlayingRef.current = false; // Mark as not playing
+        };
+      }
+    };
+
+    // Try to play the next chunk whenever the queue changes
+    if (!isPlayingRef.current) {
+      playNext();
+    }
+  }, [audioQueue]);
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+    <div>
+      <h1>Mic Recording App</h1>
+      <Button
+        disabled={isRecording}
+        onClick={() => {
+          console.log("Start button clicked");
+          startRecording();
+        }}
+      >
+        Start
+      </Button>
+      <p>{isRecording ? "Recording..." : "Stopped"}</p>
+      {/* {audioBlob && <audio controls src={URL.createObjectURL(audioBlob)} />} */}
     </div>
   );
 }
+
+const sendAudioToServer = async (audioBlob: Blob) => {
+  const formData = new FormData();
+  formData.append("audio", audioBlob, "audio.wav");
+
+  try {
+    console.log("Sending audio to server...");
+    const response = await axios.post(
+      process.env.NEXT_PUBLIC_API_SVR + "/upload-audio",
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        responseType: "blob", // Expecting a blob back from the server
+      }
+    );
+    console.log("Response from server:", response.data);
+    // Create a URL for the returned audio blob
+    // const audioUrl = URL.createObjectURL(response.data);
+    // playAudio(audioUrl);
+  } catch (error) {
+    console.error("Error sending audio to server:", error);
+  }
+};
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const playAudio = (audioUrl: string) => {
+  const audio = new Audio(audioUrl);
+  audio.play();
+};
+
+export default App;

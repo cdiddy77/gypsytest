@@ -28,6 +28,7 @@ export function useAudioRecord(
       audioChunks = [];
       // Send the audio to server
       onAudioRecorded(audioBlob, maxRecordingVolume);
+      maxRecordingVolume = 0;
     };
 
     mediaRecorder.start();
@@ -36,14 +37,15 @@ export function useAudioRecord(
     const audioSource = audioContextRef.current.createMediaStreamSource(stream);
     const analyser = audioContextRef.current.createAnalyser();
     audioSource.connect(analyser);
-    analyser.fftSize = 128;
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.3;
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
 
     const checkSilence = () => {
       analyser.getByteFrequencyData(dataArray);
       const recentVolume = dataArray.reduce((a, b) => a + b, 0) / bufferLength;
-      // console.log("recentVolume:", recentVolume);
+      console.log("recentVolume:", recentVolume);
       // If silence (recentVolume < threshold), stop recording after 0.5 seconds
       // console.log(`Recent volume: ${recentVolume}`);
       maxRecordingVolume = Math.max(maxRecordingVolume, recentVolume);
@@ -55,11 +57,11 @@ export function useAudioRecord(
         }
       } else {
         // every half second, set the volume to the recent volume
-        if (Date.now() % 250 === 0) {
-          setVolume(recentVolume);
-        }
+        setVolume(recentVolume);
         // If there's noise, clear the silence timeout
-        clearTimeout(silenceTimeout);
+        if (silenceTimeout) {
+          clearTimeout(silenceTimeout);
+        }
         silenceTimeout = undefined;
       }
     };

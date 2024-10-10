@@ -11,10 +11,11 @@ import axios from "axios";
 import { useAudioPlayQueue } from "./use-audio-play-queue";
 import base64js from "base64-js";
 import { on } from "events";
+import { RefreshCcw } from "lucide-react";
 
 export default function AudioChatbot() {
   const [chatbotSettings, setChatbotSettings] = useState<ChatbotSettings>({
-    prompt: "You are a roma gypsy",
+    prompt: "<|audio|>respond as a roma gypsy",
     temperature: 0.7,
     maxTokens: 50,
   });
@@ -31,7 +32,7 @@ export default function AudioChatbot() {
       setAudioState("audio-sent");
       console.log("maxRecordingVolume", maxRecordingVolume);
       if (maxRecordingVolume > 20) {
-        await sendAudioToServer(audioBlob);
+        await sendAudioToServer(audioBlob, chatbotSettings);
         await new Promise((resolve) => setTimeout(resolve, 3000));
         console.log("audio sent");
         setAudioState((prev) =>
@@ -41,7 +42,7 @@ export default function AudioChatbot() {
         setAudioState("not-listening");
       }
     },
-    []
+    [chatbotSettings]
   );
 
   const { startRecording, volume } = useAudioRecord(onAudioRecorded);
@@ -78,7 +79,9 @@ export default function AudioChatbot() {
     if (audioEventSourceRef.current === null) {
       console.log("Creating EventSource...");
       // Create an EventSource to connect to the SSE endpoint
-      audioEventSourceRef.current = new EventSource("/api/response-events");
+      audioEventSourceRef.current = new EventSource(
+        `${process.env.NEXT_PUBLIC_API_SVR}/response-events`
+      );
       audioEventSourceRef.current.onmessage = (event) => {
         // Decode base64 audio data using base64-js
         const base64Audio = event.data;
@@ -127,8 +130,9 @@ export default function AudioChatbot() {
   ]);
 
   const checkStatus = useCallback(() => {
+    setServerStatus("checking...");
     axios
-      .get("/api/status")
+      .get(`${process.env.NEXT_PUBLIC_API_SVR}/status`)
       .then((response) => {
         console.log("Server status:", response.data);
         setServerStatus(response.data.status);
@@ -180,11 +184,12 @@ export default function AudioChatbot() {
           {audioState === "listening" && (
             <motion.div
               className="absolute inset-0 flex items-center justify-center"
-              initial={false}
-              style={{ scale: 1 + volume * 0.01 }}
-              transition={{ repeat: Infinity, duration: 0.2 }}
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ repeat: Infinity, duration: 0.5 }}
             >
-              <div className="w-32 h-32 bg-blue-500 rounded-full opacity-50" />
+              <div className="text-white text-2xl w-32 h-32 bg-blue-500 rounded-full opacity-50 flex items-center justify-center">
+                <div>{Math.round(volume)}</div>
+              </div>
             </motion.div>
           )}
           {audioState === "playing" && (
@@ -220,8 +225,12 @@ export default function AudioChatbot() {
                   return "Listening mode is off";
               }
             })()}
-          </p>{" "}
+          </p>
           <p className="text-center text-gray-600">
+            <RefreshCcw
+              onClick={checkStatus}
+              className="inline cursor-pointer hover:bg-gray-200 rounded-full p-1"
+            />{" "}
             Server Status: {serverStatus}
           </p>
         </div>
@@ -230,17 +239,26 @@ export default function AudioChatbot() {
   );
 }
 
-const sendAudioToServer = async (audioBlob: Blob) => {
+const sendAudioToServer = async (
+  audioBlob: Blob,
+  settings: ChatbotSettings
+) => {
   const formData = new FormData();
   formData.append("audio", audioBlob, "audio.wav");
-
+  formData.append("prompt", settings.prompt);
+  formData.append("temperature", settings.temperature.toString());
+  formData.append("max_new_tokens", settings.maxTokens.toString());
   try {
     console.log("Sending audio to server...");
-    const response = await axios.post("/api/upload-audio", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-      responseType: "blob", // Expecting a blob back from the server
-      timeout: 3000,
-    });
+    const response = await axios.post(
+      `${process.env.NEXT_PUBLIC_API_SVR}/upload-audio`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        responseType: "blob", // Expecting a blob back from the server
+        timeout: 3000,
+      }
+    );
     console.log("Response from server:", response.data);
     // Create a URL for the returned audio blob
     // const audioUrl = URL.createObjectURL(response.data);

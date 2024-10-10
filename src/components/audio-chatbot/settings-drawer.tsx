@@ -25,6 +25,8 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
   const [prompt, setPrompt] = React.useState<string>("");
   const [temperature, setTemperature] = React.useState<number>(0.7);
   const [maxTokens, setMaxTokens] = React.useState<number | undefined>(100);
+  const [silenceVolumeThreshold, setSilenceVolumeThreshold] =
+    React.useState(10);
 
   const onOpenChange = React.useCallback(
     (isOpen: boolean) => {
@@ -35,6 +37,7 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
         setPrompt(settings.prompt);
         setTemperature(settings.temperature);
         setMaxTokens(settings.maxTokens);
+        setSilenceVolumeThreshold(settings.silenceVolumeThreshold);
       }
     },
     [
@@ -42,6 +45,7 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
       prompt,
       settings.maxTokens,
       settings.prompt,
+      settings.silenceVolumeThreshold,
       settings.temperature,
       temperature,
       updateSettings,
@@ -62,7 +66,7 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
           <DrawerTitle>Settings</DrawerTitle>
         </DrawerHeader>
         <div className="p-4 bg-white rounded-t-[10px]">
-          <div className="space-y-4">
+          <div className="space-y-4 mb-8">
             <div>
               <Label htmlFor="prompt" className="text-sm font-medium">
                 Prompt
@@ -104,6 +108,24 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
                     e.target.value ? parseInt(e.target.value) : undefined
                   )
                 }
+                className="mt-1"
+              />
+            </div>
+            <hr className="border-gray-200 my-4" />
+            <div>
+              <Label
+                htmlFor="silenceVolumeThreshold"
+                className="text-sm font-medium"
+              >
+                Silence Volume Threshold: {silenceVolumeThreshold.toFixed(0)}
+              </Label>
+              <Slider
+                id="silenceVolumeThreshold"
+                min={5}
+                max={80}
+                step={5}
+                value={[silenceVolumeThreshold]}
+                onValueChange={(value) => setSilenceVolumeThreshold(value[0])}
                 className="mt-1"
               />
             </div>

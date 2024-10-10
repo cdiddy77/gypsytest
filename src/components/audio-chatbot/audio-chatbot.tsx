@@ -13,17 +13,18 @@ import base64js from "base64-js";
 import { on } from "events";
 import { RefreshCcw } from "lucide-react";
 
-const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
+const DEFAULT_CHATBOT_SETTINGS = {
+  prompt: "<|audio|>respond as a roma gypsy",
+  temperature: 0.7,
+  maxTokens: 50,
+  silenceVolumeThreshold: 10,
+  sendVolumeThreshold: 20,
+  smoothingTimeConstant: 0.5,
+};
 export default function AudioChatbot() {
-  const [chatbotSettings, setChatbotSettings] = useState<ChatbotSettings>({
-    prompt: "<|audio|>respond as a roma gypsy",
-    temperature: 0.7,
-    maxTokens: 50,
-    silenceVolumeThreshold: isMobile ? 10 : 5,
-    sendVolumeThreshold: 20,
-    smoothingTimeConstant: 0.5,
-  });
+  const [chatbotSettings, setChatbotSettings] = useState<ChatbotSettings>(
+    DEFAULT_CHATBOT_SETTINGS
+  );
   const [isListenMode, setIsListenMode] = useState(false);
   const [serverStatus, setServerStatus] = useState("offline");
   const [audioState, setAudioState] = useState<
@@ -77,7 +78,10 @@ export default function AudioChatbot() {
   useEffect(() => {
     const savedSettings = localStorage.getItem("chatbotSettings");
     if (savedSettings) {
-      setChatbotSettings(JSON.parse(savedSettings));
+      setChatbotSettings({
+        ...DEFAULT_CHATBOT_SETTINGS,
+        ...JSON.parse(savedSettings),
+      });
     }
   }, []);
 
@@ -103,6 +107,14 @@ export default function AudioChatbot() {
       };
       audioEventSourceRef.current.addEventListener("close", () => {
         console.log("EventSource wow we got a close event");
+        if (audioEventSourceRef.current) {
+          audioEventSourceRef.current.close();
+          audioEventSourceRef.current = null;
+        }
+      });
+
+      audioEventSourceRef.current.addEventListener("error", (error) => {
+        console.error("Server Processing Error", error);
         if (audioEventSourceRef.current) {
           audioEventSourceRef.current.close();
           audioEventSourceRef.current = null;

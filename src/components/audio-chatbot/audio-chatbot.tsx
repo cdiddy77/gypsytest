@@ -13,11 +13,16 @@ import base64js from "base64-js";
 import { on } from "events";
 import { RefreshCcw } from "lucide-react";
 
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
 export default function AudioChatbot() {
   const [chatbotSettings, setChatbotSettings] = useState<ChatbotSettings>({
     prompt: "<|audio|>respond as a roma gypsy",
     temperature: 0.7,
     maxTokens: 50,
+    silenceVolumeThreshold: isMobile ? 10 : 5,
+    sendVolumeThreshold: 20,
+    smoothingTimeConstant: 0.5,
   });
   const [isListenMode, setIsListenMode] = useState(false);
   const [serverStatus, setServerStatus] = useState("offline");
@@ -31,7 +36,7 @@ export default function AudioChatbot() {
       console.log("onAudioRecorded");
       setAudioState("audio-sent");
       console.log("maxRecordingVolume", maxRecordingVolume);
-      if (maxRecordingVolume > 20) {
+      if (maxRecordingVolume > chatbotSettings.sendVolumeThreshold) {
         await sendAudioToServer(audioBlob, chatbotSettings);
         await new Promise((resolve) => setTimeout(resolve, 3000));
         console.log("audio sent");
@@ -45,7 +50,10 @@ export default function AudioChatbot() {
     [chatbotSettings]
   );
 
-  const { startRecording, volume } = useAudioRecord(onAudioRecorded);
+  const { startRecording, volume } = useAudioRecord(
+    onAudioRecorded,
+    chatbotSettings
+  );
 
   const onAudioQueueEmpty = useCallback(() => {
     console.log("onAudioQueueEmpty");
@@ -173,8 +181,11 @@ export default function AudioChatbot() {
             <SettingsDrawer
               updateSettings={(s) => {
                 console.log(JSON.stringify(s));
-                setChatbotSettings(s);
-                localStorage.setItem("chatbotSettings", JSON.stringify(s));
+                setChatbotSettings((prev) => ({ ...prev, ...s }));
+                localStorage.setItem(
+                  "chatbotSettings",
+                  JSON.stringify({ ...chatbotSettings, ...s })
+                );
               }}
               settings={chatbotSettings}
             />

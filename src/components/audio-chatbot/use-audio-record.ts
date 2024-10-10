@@ -1,7 +1,9 @@
 import React from "react";
+import { ChatbotSettings } from "./types";
 
 export function useAudioRecord(
-  onAudioRecorded: (audioBlob: Blob, maxRecordingVolume: number) => void
+  onAudioRecorded: (audioBlob: Blob, maxRecordingVolume: number) => void,
+  settings: ChatbotSettings
 ) {
   const audioContextRef = React.useRef<AudioContext | null>(null);
   const [volume, setVolume] = React.useState(0);
@@ -38,7 +40,7 @@ export function useAudioRecord(
     const analyser = audioContextRef.current.createAnalyser();
     audioSource.connect(analyser);
     analyser.fftSize = 256;
-    analyser.smoothingTimeConstant = 0.3;
+    analyser.smoothingTimeConstant = settings.smoothingTimeConstant;
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
 
@@ -49,7 +51,7 @@ export function useAudioRecord(
       // If silence (recentVolume < threshold), stop recording after 0.5 seconds
       // console.log(`Recent volume: ${recentVolume}`);
       maxRecordingVolume = Math.max(maxRecordingVolume, recentVolume);
-      if (recentVolume < 5) {
+      if (recentVolume < settings.silenceVolumeThreshold) {
         if (!silenceTimeout) {
           silenceTimeout = setTimeout(() => {
             mediaRecorder.stop();
@@ -75,7 +77,11 @@ export function useAudioRecord(
       if (audioContextRef.current) audioContextRef.current.close();
       stream.getTracks().forEach((track) => track.stop());
     };
-  }, [onAudioRecorded]);
+  }, [
+    onAudioRecorded,
+    settings.silenceVolumeThreshold,
+    settings.smoothingTimeConstant,
+  ]);
 
   return React.useMemo(
     () => ({ startRecording, volume }),

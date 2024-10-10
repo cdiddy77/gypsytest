@@ -17,7 +17,7 @@ import { Settings } from "lucide-react";
 
 interface Props {
   settings: ChatbotSettings;
-  updateSettings: (newSettings: ChatbotSettings) => void;
+  updateSettings: (newSettings: Partial<ChatbotSettings>) => void;
 }
 
 export default function SettingsDrawer({ settings, updateSettings }: Props) {

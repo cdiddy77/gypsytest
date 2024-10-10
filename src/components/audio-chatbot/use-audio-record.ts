@@ -17,6 +17,7 @@ export function useAudioRecord(
     let audioChunks: BlobPart[] = [];
 
     mediaRecorder.ondataavailable = (event) => {
+      console.log("Data available...");
       audioChunks.push(event.data);
     };
 
@@ -44,6 +45,7 @@ export function useAudioRecord(
       const recentVolume = dataArray.reduce((a, b) => a + b, 0) / bufferLength;
       // console.log("recentVolume:", recentVolume);
       // If silence (recentVolume < threshold), stop recording after 0.5 seconds
+      // console.log(`Recent volume: ${recentVolume}`);
       maxRecordingVolume = Math.max(maxRecordingVolume, recentVolume);
       if (recentVolume < 5) {
         if (!silenceTimeout) {

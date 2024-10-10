@@ -74,11 +74,11 @@ export default function AudioChatbot() {
 
   const audioEventSourceRef = useRef<EventSource | null>(null);
   const ensureAudioEventSource = useCallback(() => {
+    console.log("ensureAudioEventSource");
     if (audioEventSourceRef.current === null) {
+      console.log("Creating EventSource...");
       // Create an EventSource to connect to the SSE endpoint
-      audioEventSourceRef.current = new EventSource(
-        process.env.NEXT_PUBLIC_API_SVR + "/response-events"
-      );
+      audioEventSourceRef.current = new EventSource("/api/response-events");
       audioEventSourceRef.current.onmessage = (event) => {
         // Decode base64 audio data using base64-js
         const base64Audio = event.data;
@@ -128,7 +128,7 @@ export default function AudioChatbot() {
 
   const checkStatus = useCallback(() => {
     axios
-      .get(process.env.NEXT_PUBLIC_API_SVR + "/status")
+      .get("/api/status")
       .then((response) => {
         console.log("Server status:", response.data);
         setServerStatus(response.data.status);
@@ -236,15 +236,11 @@ const sendAudioToServer = async (audioBlob: Blob) => {
 
   try {
     console.log("Sending audio to server...");
-    const response = await axios.post(
-      process.env.NEXT_PUBLIC_API_SVR + "/upload-audio",
-      formData,
-      {
-        headers: { "Content-Type": "multipart/form-data" },
-        responseType: "blob", // Expecting a blob back from the server
-        timeout: 3000,
-      }
-    );
+    const response = await axios.post("/api/upload-audio", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      responseType: "blob", // Expecting a blob back from the server
+      timeout: 3000,
+    });
     console.log("Response from server:", response.data);
     // Create a URL for the returned audio blob
     // const audioUrl = URL.createObjectURL(response.data);

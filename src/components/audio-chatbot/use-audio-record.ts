@@ -45,7 +45,7 @@ export function useAudioRecord(
     const checkSilence = () => {
       analyser.getByteFrequencyData(dataArray);
       const recentVolume = dataArray.reduce((a, b) => a + b, 0) / bufferLength;
-      console.log("recentVolume:", recentVolume);
+      // console.log("recentVolume:", recentVolume);
       // If silence (recentVolume < threshold), stop recording after 0.5 seconds
       // console.log(`Recent volume: ${recentVolume}`);
       maxRecordingVolume = Math.max(maxRecordingVolume, recentVolume);

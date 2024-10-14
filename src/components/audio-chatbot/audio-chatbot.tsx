@@ -13,13 +13,14 @@ import base64js from "base64-js";
 import { on } from "events";
 import { RefreshCcw } from "lucide-react";
 
-const DEFAULT_CHATBOT_SETTINGS = {
+const DEFAULT_CHATBOT_SETTINGS: ChatbotSettings = {
   prompt: "<|audio|>respond as a roma gypsy",
   temperature: 0.7,
   maxTokens: 50,
   silenceVolumeThreshold: 10,
   sendVolumeThreshold: 20,
   smoothingTimeConstant: 0.5,
+  maxRecordingTime: 20,
 };
 export default function AudioChatbot() {
   const [chatbotSettings, setChatbotSettings] = useState<ChatbotSettings>(

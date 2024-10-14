@@ -27,6 +27,8 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
   const [maxTokens, setMaxTokens] = React.useState<number | undefined>(100);
   const [silenceVolumeThreshold, setSilenceVolumeThreshold] =
     React.useState(10);
+  const [maxRecordingTime, setMaxRecordingTime] = React.useState(10);
+  const [sendVolumeThreshold, setSendVolumeThreshold] = React.useState(10);
 
   const onOpenChange = React.useCallback(
     (isOpen: boolean) => {
@@ -38,13 +40,17 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
         setTemperature(settings.temperature);
         setMaxTokens(settings.maxTokens);
         setSilenceVolumeThreshold(settings.silenceVolumeThreshold);
+        setMaxRecordingTime(settings.maxRecordingTime);
+        setSendVolumeThreshold(settings.sendVolumeThreshold);
       }
     },
     [
       maxTokens,
       prompt,
+      settings.maxRecordingTime,
       settings.maxTokens,
       settings.prompt,
+      settings.sendVolumeThreshold,
       settings.silenceVolumeThreshold,
       settings.temperature,
       temperature,
@@ -126,6 +132,40 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
                 step={5}
                 value={[silenceVolumeThreshold]}
                 onValueChange={(value) => setSilenceVolumeThreshold(value[0])}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label
+                htmlFor="sendVolumeThreshold"
+                className="text-sm font-medium"
+              >
+                Send Volume Threshold: {sendVolumeThreshold.toFixed(0)}
+              </Label>
+              <p className="text-xs">
+                The recorder must hear something above this threshold
+              </p>
+              <Slider
+                id="sendVolumeThreshold"
+                min={10}
+                max={80}
+                step={5}
+                value={[sendVolumeThreshold]}
+                onValueChange={(value) => setSendVolumeThreshold(value[0])}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="maxRecordingTime" className="text-sm font-medium">
+                Max Recording Time (s): {maxRecordingTime.toFixed(0)}
+              </Label>
+              <Slider
+                id="maxRecordingTime"
+                min={5}
+                max={30}
+                step={5}
+                value={[maxRecordingTime]}
+                onValueChange={(value) => setMaxRecordingTime(value[0])}
                 className="mt-1"
               />
             </div>

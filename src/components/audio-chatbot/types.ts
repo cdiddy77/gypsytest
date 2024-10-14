@@ -5,4 +5,5 @@ export interface ChatbotSettings {
   sendVolumeThreshold: number;
   silenceVolumeThreshold: number;
   smoothingTimeConstant: number; // 0..1
+  maxRecordingTime: number; // in seconds
 }

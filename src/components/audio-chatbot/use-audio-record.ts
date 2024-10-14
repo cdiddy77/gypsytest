@@ -6,6 +6,7 @@ export function useAudioRecord(
   settings: ChatbotSettings
 ) {
   const audioContextRef = React.useRef<AudioContext | null>(null);
+  const recordingStartTimeRef = React.useRef<number | null>(null);
   const [volume, setVolume] = React.useState(0);
   const startRecording = React.useCallback(async () => {
     console.log("Starting recording...");
@@ -31,9 +32,11 @@ export function useAudioRecord(
       // Send the audio to server
       onAudioRecorded(audioBlob, maxRecordingVolume);
       maxRecordingVolume = 0;
+      recordingStartTimeRef.current = null;
     };
 
     mediaRecorder.start();
+    recordingStartTimeRef.current = Date.now();
 
     // Setup silence detection
     const audioSource = audioContextRef.current.createMediaStreamSource(stream);
@@ -51,7 +54,11 @@ export function useAudioRecord(
       // If silence (recentVolume < threshold), stop recording after 0.5 seconds
       // console.log(`Recent volume: ${recentVolume}`);
       maxRecordingVolume = Math.max(maxRecordingVolume, recentVolume);
-      if (recentVolume < settings.silenceVolumeThreshold) {
+      const elapsedTime = Date.now() - (recordingStartTimeRef.current || 0);
+      if (elapsedTime > settings.maxRecordingTime * 1000) {
+        console.log("Max recording time reached");
+        mediaRecorder.stop();
+      } else if (recentVolume < settings.silenceVolumeThreshold) {
         if (!silenceTimeout) {
           silenceTimeout = setTimeout(() => {
             mediaRecorder.stop();
@@ -79,6 +86,7 @@ export function useAudioRecord(
     };
   }, [
     onAudioRecorded,
+    settings.maxRecordingTime,
     settings.silenceVolumeThreshold,
     settings.smoothingTimeConstant,
   ]);

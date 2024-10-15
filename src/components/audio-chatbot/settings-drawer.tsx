@@ -35,7 +35,15 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
     (isOpen: boolean) => {
       setIsSettingsOpen(isOpen);
       if (!isOpen) {
-        updateSettings({ prompt, temperature, maxTokens: maxTokens || 100 });
+        updateSettings({
+          prompt,
+          temperature,
+          maxTokens: maxTokens || 100,
+          systemMessage,
+          silenceVolumeThreshold,
+          maxRecordingTime,
+          sendVolumeThreshold,
+        });
       } else {
         setSystemMessage(settings.systemMessage);
         setPrompt(settings.prompt);
@@ -47,8 +55,10 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
       }
     },
     [
+      maxRecordingTime,
       maxTokens,
       prompt,
+      sendVolumeThreshold,
       settings.maxRecordingTime,
       settings.maxTokens,
       settings.prompt,
@@ -56,6 +66,8 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
       settings.silenceVolumeThreshold,
       settings.systemMessage,
       settings.temperature,
+      silenceVolumeThreshold,
+      systemMessage,
       temperature,
       updateSettings,
     ]

@@ -1,4 +1,5 @@
 export interface ChatbotSettings {
+  systemMessage: string;
   prompt: string;
   temperature: number;
   maxTokens: number;

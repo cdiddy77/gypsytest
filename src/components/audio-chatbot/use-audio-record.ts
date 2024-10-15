@@ -55,7 +55,10 @@ export function useAudioRecord(
       // console.log(`Recent volume: ${recentVolume}`);
       maxRecordingVolume = Math.max(maxRecordingVolume, recentVolume);
       const elapsedTime = Date.now() - (recordingStartTimeRef.current || 0);
-      if (elapsedTime > settings.maxRecordingTime * 1000) {
+      if (
+        recordingStartTimeRef.current !== null &&
+        elapsedTime > settings.maxRecordingTime * 1000
+      ) {
         console.log("Max recording time reached");
         mediaRecorder.stop();
       } else if (recentVolume < settings.silenceVolumeThreshold) {

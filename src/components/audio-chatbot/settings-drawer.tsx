@@ -22,6 +22,7 @@ interface Props {
 
 export default function SettingsDrawer({ settings, updateSettings }: Props) {
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+  const [systemMessage, setSystemMessage] = React.useState<string>("");
   const [prompt, setPrompt] = React.useState<string>("");
   const [temperature, setTemperature] = React.useState<number>(0.7);
   const [maxTokens, setMaxTokens] = React.useState<number | undefined>(100);
@@ -36,6 +37,7 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
       if (!isOpen) {
         updateSettings({ prompt, temperature, maxTokens: maxTokens || 100 });
       } else {
+        setSystemMessage(settings.systemMessage);
         setPrompt(settings.prompt);
         setTemperature(settings.temperature);
         setMaxTokens(settings.maxTokens);
@@ -52,6 +54,7 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
       settings.prompt,
       settings.sendVolumeThreshold,
       settings.silenceVolumeThreshold,
+      settings.systemMessage,
       settings.temperature,
       temperature,
       updateSettings,
@@ -74,13 +77,26 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
         <div className="p-4 bg-white rounded-t-[10px]">
           <div className="space-y-4 mb-8">
             <div>
+              <Label htmlFor="systemMessage" className="text-sm font-medium">
+                System Message
+              </Label>
+              <Textarea
+                id="systemMessage"
+                value={systemMessage}
+                rows={6}
+                onChange={(e) => setSystemMessage(e.target.value)}
+                placeholder="Enter your system message here"
+                className="mt-1"
+              />
+            </div>
+            <div>
               <Label htmlFor="prompt" className="text-sm font-medium">
                 Prompt
               </Label>
               <Textarea
                 id="prompt"
                 value={prompt}
-                rows={8}
+                rows={2}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Enter your prompt here"
                 className="mt-1"

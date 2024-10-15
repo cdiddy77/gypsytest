@@ -7,13 +7,25 @@ import { Label } from "@/components/ui/label";
 import SettingsDrawer from "./settings-drawer";
 import { ChatbotSettings } from "./types";
 import { useAudioRecord } from "./use-audio-record";
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import { useAudioPlayQueue } from "./use-audio-play-queue";
 import base64js from "base64-js";
-import { on } from "events";
 import { RefreshCcw } from "lucide-react";
+import { Button } from "../ui/button";
+import {
+  ResetConversationRequest,
+  ResetConversationResponse,
+} from "@/lib/dtos";
 
 const DEFAULT_CHATBOT_SETTINGS: ChatbotSettings = {
+  systemMessage: `respond as a fortune teller.
+Keep conversation focused on tarot card readings. 
+Keep all responses brief and five sentances or less.
+On the first repsonse, introduce yourself as Madame Zarina and give a mystical sounding greeting, then ask the user what tarot cards they are holding and wait for reply from the user.
+When told the tarot cards, give only the combined summarized tarot card reading in three sentences or less.
+After giving the tarot card reading, forget the user's cards and reset conversation.
+Do not begin follow up responses with greetings.
+  `,
   prompt: "<|audio|>respond as a roma gypsy",
   temperature: 0.7,
   maxTokens: 50,
@@ -51,6 +63,24 @@ export default function AudioChatbot() {
     },
     [chatbotSettings]
   );
+
+  const resetConversation = useCallback(() => {
+    console.log("resetConversation");
+    axios
+      .post<
+        ResetConversationResponse,
+        AxiosResponse<ResetConversationResponse>,
+        ResetConversationRequest
+      >(`${process.env.NEXT_PUBLIC_API_SVR}/reset-conversation`, {
+        system_message: chatbotSettings.systemMessage,
+      })
+      .then((response) => {
+        console.log("Reset result:", response);
+      })
+      .catch((error) => {
+        console.log("Error resetting conversation:", error);
+      });
+  }, [chatbotSettings.systemMessage]);
 
   const { startRecording, volume } = useAudioRecord(
     onAudioRecorded,
@@ -257,6 +287,9 @@ export default function AudioChatbot() {
             />{" "}
             Server Status: {serverStatus}
           </p>
+        </div>
+        <div className="flex items-center justify-center">
+          <Button onClick={resetConversation}>Reset Conversation</Button>
         </div>
       </div>
     </div>

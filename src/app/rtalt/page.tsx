@@ -2,7 +2,8 @@
 import React from "react";
 import { ConsolePage } from "@/components/console-page";
 
-function App() {
+function Alt() {
   return <ConsolePage />;
 }
-export default App;
+
+export default Alt;

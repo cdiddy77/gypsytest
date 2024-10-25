@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import SettingsDrawer from "./settings-drawer";
-import { ChatbotSettings } from "./types";
+import { ChatbotSettings, DEFAULT_WEBCAM_ID } from "./types";
 import { useAudioRecord } from "./use-audio-record";
 import axios, { AxiosResponse } from "axios";
 import { useAudioPlayQueue } from "./use-audio-play-queue";
@@ -16,12 +16,15 @@ import {
   ResetConversationRequest,
   ResetConversationResponse,
 } from "@/lib/dtos";
+import VideoInput from "../video-input";
+import { useReadingRecognizer } from "./use-reading-recognizer";
+import { read } from "fs";
 
 const DEFAULT_CHATBOT_SETTINGS: ChatbotSettings = {
-  systemMessage: `respond as a fortune teller.
-Keep conversation focused on tarot card readings. 
+  systemMessage: `You are Emma Thompson playing the role of a zany hilarious gypsy fortune teller.
 Keep all responses brief and five sentances or less.
-On the first repsonse, introduce yourself as Madame Zarina and give a mystical sounding greeting, then ask the user what tarot cards they are holding and wait for reply from the user.
+On the first repsonse, introduce yourself as Madame Zarina and give a mystical sounding greeting, 
+then ask the user what tarot cards they are holding and wait for reply from the user.
 When told the tarot cards, give only the combined summarized tarot card reading in three sentences or less.
 After giving the tarot card reading, forget the user's cards and reset conversation.
 Do not begin follow up responses with greetings.
@@ -33,6 +36,11 @@ Do not begin follow up responses with greetings.
   sendVolumeThreshold: 20,
   smoothingTimeConstant: 0.5,
   maxRecordingTime: 20,
+  imageSendInterval: 5,
+  verifyImageSendInterval: 1,
+  readingStatusCheckInterval: 2,
+  errorInterval: 5,
+  webcamId: DEFAULT_WEBCAM_ID,
 };
 export default function AudioChatbot() {
   const [chatbotSettings, setChatbotSettings] = useState<ChatbotSettings>(
@@ -93,6 +101,8 @@ export default function AudioChatbot() {
   }, []);
 
   const { pushAudio, isPlaying } = useAudioPlayQueue(onAudioQueueEmpty);
+
+  const readingRecognizer = useReadingRecognizer(chatbotSettings, pushAudio);
 
   useEffect(() => {
     console.log("isPlaying:", isPlaying);
@@ -211,7 +221,7 @@ export default function AudioChatbot() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4">
       <div className="w-full h-full max-w-md bg-white rounded-lg shadow-lg p-6">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-4">
           <Label htmlFor="listening-mode" className="text-lg font-medium">
             Listening Mode
           </Label>
@@ -234,7 +244,7 @@ export default function AudioChatbot() {
             />
           </div>
         </div>
-        <div className="relative h-64 bg-gray-200 rounded-lg overflow-hidden mb-4">
+        <div className="relative h-32 bg-gray-200 rounded-lg overflow-hidden mb-4">
           {audioState === "listening" && (
             <motion.div
               className="absolute inset-0 flex items-center justify-center"
@@ -265,7 +275,7 @@ export default function AudioChatbot() {
             </motion.div>
           )}
         </div>
-        <div className="flex flex-row items-center justify-between mb-8">
+        <div className="flex flex-row items-center justify-between mb-2">
           <p className="text-center text-gray-600">
             {(() => {
               switch (audioState) {
@@ -280,16 +290,52 @@ export default function AudioChatbot() {
               }
             })()}
           </p>
+        </div>
+        <hr className="mb-2" />
+        <div className="flex items-center justify-between mb-4">
+          <Label htmlFor="watching-mode" className="text-lg font-medium">
+            Watching Mode
+          </Label>
+          <div className="flex items-center space-x-4">
+            <Switch
+              id="watching-mode"
+              checked={readingRecognizer.isWatchMode}
+              onCheckedChange={readingRecognizer.setWatchMode}
+            />
+          </div>
+        </div>
+        <div className="flex items-center justify-center mb-2">
+          <VideoInput deviceId={chatbotSettings.webcamId} />
+        </div>
+        <div className="flex flex-row items-center justify-between mb-2">
+          <p className="text-center text-gray-600">
+            {(() => {
+              switch (readingRecognizer.readingStatus) {
+                case "error":
+                  return "Error";
+                case "no_cards":
+                  return "No cards detected";
+                case "verifying_cards":
+                  return "Verifying cards...";
+                case "requesting_reading":
+                  return "Requesting reading...";
+                case "reading_tts_requested":
+                  return "Reading TTS requested...";
+                case "reading_tts_complete":
+                  return "Reading TTS complete";
+              }
+            })()}
+          </p>
+        </div>{" "}
+        <div className="flex items-center justify-between">
+          <Button onClick={resetConversation}>Reset Conversation</Button>
           <p className="text-center text-gray-600">
             <RefreshCcw
               onClick={checkStatus}
               className="inline cursor-pointer hover:bg-gray-200 rounded-full p-1"
             />{" "}
             Server Status: {serverStatus}
-          </p>
-        </div>
-        <div className="flex items-center justify-center">
-          <Button onClick={resetConversation}>Reset Conversation</Button>
+          </p>{" "}
         </div>
       </div>
     </div>

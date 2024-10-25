@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
+import WebcamSelector from "../webcam-selector";
 
 interface Props {
   settings: ChatbotSettings;
@@ -30,6 +31,11 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
     React.useState(10);
   const [maxRecordingTime, setMaxRecordingTime] = React.useState(10);
   const [sendVolumeThreshold, setSendVolumeThreshold] = React.useState(10);
+  const [imageSendInterval, setImageSendInterval] = React.useState(5);
+  const [verifyImageSendInterval, setVerifyImageSendInterval] =
+    React.useState(1);
+  const [readingStatusCheckInterval, setReadingStatusCheckInterval] =
+    React.useState(2);
 
   const onOpenChange = React.useCallback(
     (isOpen: boolean) => {
@@ -73,6 +79,7 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
     ]
   );
 
+  const [webcam, setWebcam] = React.useState<string>("");
   return (
     <Drawer
       open={isSettingsOpen}
@@ -88,6 +95,9 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
         </DrawerHeader>
         <div className="p-4 bg-white rounded-t-[10px]">
           <div className="space-y-4 mb-8">
+            <div>
+              <WebcamSelector webcam={webcam} setWebcam={setWebcam} />
+            </div>
             <div>
               <Label htmlFor="systemMessage" className="text-sm font-medium">
                 System Message
@@ -146,10 +156,10 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
               />
             </div>
             <hr className="border-gray-200 my-4" />
-            <div>
+            <div className="flex flex-row">
               <Label
                 htmlFor="silenceVolumeThreshold"
-                className="text-sm font-medium"
+                className="text-sm font-medium flex-1"
               >
                 Silence Volume Threshold: {silenceVolumeThreshold.toFixed(0)}
               </Label>
@@ -160,19 +170,16 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
                 step={5}
                 value={[silenceVolumeThreshold]}
                 onValueChange={(value) => setSilenceVolumeThreshold(value[0])}
-                className="mt-1"
+                className="mt-1 flex-1"
               />
             </div>
-            <div>
+            <div className="flex flex-row">
               <Label
                 htmlFor="sendVolumeThreshold"
-                className="text-sm font-medium"
+                className="text-sm font-medium flex-1"
               >
                 Send Volume Threshold: {sendVolumeThreshold.toFixed(0)}
               </Label>
-              <p className="text-xs">
-                The recorder must hear something above this threshold
-              </p>
               <Slider
                 id="sendVolumeThreshold"
                 min={10}
@@ -180,11 +187,14 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
                 step={5}
                 value={[sendVolumeThreshold]}
                 onValueChange={(value) => setSendVolumeThreshold(value[0])}
-                className="mt-1"
+                className="mt-1 flex-1"
               />
             </div>
-            <div>
-              <Label htmlFor="maxRecordingTime" className="text-sm font-medium">
+            <div className="flex flex-row">
+              <Label
+                htmlFor="maxRecordingTime"
+                className="text-sm font-medium flex-1"
+              >
                 Max Recording Time (s): {maxRecordingTime.toFixed(0)}
               </Label>
               <Slider
@@ -194,7 +204,62 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
                 step={5}
                 value={[maxRecordingTime]}
                 onValueChange={(value) => setMaxRecordingTime(value[0])}
-                className="mt-1"
+                className="mt-1 flex-1"
+              />
+            </div>
+            <div className="flex flex-row">
+              <Label
+                htmlFor="imageSendInterval"
+                className="text-sm font-medium flex-1"
+              >
+                Image send interval: {imageSendInterval.toFixed(0)}s
+              </Label>
+              <Slider
+                id="imageSendInterval"
+                min={1}
+                max={10}
+                step={1}
+                value={[imageSendInterval]}
+                onValueChange={(value) => setImageSendInterval(value[0])}
+                className="mt-1 flex-1"
+              />
+            </div>
+            <div className="flex flex-row">
+              <Label
+                htmlFor="verifyImageSendInterval"
+                className="text-sm font-medium flex-1"
+              >
+                Verify image send interval: {verifyImageSendInterval.toFixed(0)}
+                s
+              </Label>
+              <Slider
+                id="verifyImageSendInterval"
+                min={1}
+                max={8}
+                step={1}
+                value={[verifyImageSendInterval]}
+                onValueChange={(value) => setVerifyImageSendInterval(value[0])}
+                className="mt-1 flex-1"
+              />
+            </div>
+            <div className="flex flex-row">
+              <Label
+                htmlFor="readingStatusCheckInterval"
+                className="text-sm font-medium flex-1"
+              >
+                Reading status check interval:
+                {readingStatusCheckInterval.toFixed(0)}s
+              </Label>
+              <Slider
+                id="readingStatusCheckInterval"
+                min={1}
+                max={8}
+                step={1}
+                value={[readingStatusCheckInterval]}
+                onValueChange={(value) =>
+                  setReadingStatusCheckInterval(value[0])
+                }
+                className="mt-1 flex-1"
               />
             </div>
           </div>

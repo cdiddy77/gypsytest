@@ -28,7 +28,7 @@ const WebcamSelector: React.FC<Props> = ({ webcam, setWebcam }) => {
         console.log(
           "videoDevices",
           JSON.stringify({
-            devices,
+            // devices,
             videoDevices: videoDevices.map((d) => d.label),
           })
         );

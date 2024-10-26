@@ -39,29 +39,31 @@ import {
 import { useLazyRef } from "@/lib/use-lazy-ref";
 import { ElevenLabsClient } from "@/lib/elevenlabs-client";
 import { useAudioPlayQueue } from "./audio-chatbot/use-audio-play-queue";
-
-/**
- * Type for result from get_weather() function call
- */
-interface Coordinates {
-  lat: number;
-  lng: number;
-  location?: string;
-  temperature?: {
-    value: number;
-    units: string;
-  };
-  wind_speed?: {
-    value: number;
-    units: string;
-  };
-}
-
-function audioPlayQueueEmpty() {
-  console.log("audioPlayQueueEmpty");
-}
+import VideoInput from "./video-input";
+import {
+  ChatbotSettings,
+  DEFAULT_CHATBOT_SETTINGS,
+} from "./audio-chatbot/types";
+import WebcamSelector from "./webcam-selector";
+import { useCardSpotter } from "./audio-chatbot/use-card-spotter";
+import { TarotCardHand } from "@/lib/dtos";
+import SettingsDrawer from "./audio-chatbot/settings-drawer";
 
 export function ConsolePage() {
+  const [chatbotSettings, setChatbotSettings] = useState<ChatbotSettings>(
+    DEFAULT_CHATBOT_SETTINGS
+  );
+
+  useEffect(() => {
+    const savedSettings = localStorage.getItem("chatbotSettings");
+    if (savedSettings) {
+      setChatbotSettings({
+        ...DEFAULT_CHATBOT_SETTINGS,
+        ...JSON.parse(savedSettings),
+      });
+    }
+  }, []);
+
   /**
    * Ask user for API Key
    * If we're using the local relay server, we don't need this
@@ -98,11 +100,32 @@ export function ConsolePage() {
     console.log("creating new ElevenLabsClient");
     return new ElevenLabsClient();
   });
-
-  const { pushAudio } = useAudioPlayQueue(audioPlayQueueEmpty);
+  const audioPlayQueueEmpty = useCallback(async () => {
+    console.log("audioPlayQueueEmpty");
+    const wavRecorder = wavRecorderRef();
+    const client = clientRef();
+    if (wavRecorder.getStatus() === "paused") {
+      await wavRecorder.record((data) => client.appendInputAudio(data.mono));
+    }
+  }, [clientRef, wavRecorderRef]);
+  const audioPlayQueueBegin = useCallback(() => {
+    console.log("audioPlayQueueBegin");
+    const wavRecorder = wavRecorderRef();
+    if (wavRecorder.getStatus() === "recording") {
+      wavRecorder.pause();
+    }
+  }, [wavRecorderRef]);
+  const { pushAudio } = useAudioPlayQueue(
+    audioPlayQueueBegin,
+    audioPlayQueueEmpty
+  );
   useEffect(() => {
     elevenlabsRef().audioConsumer = pushAudio;
   }, [elevenlabsRef, pushAudio]);
+
+  const setWebcam = useCallback((deviceId: string) => {
+    setChatbotSettings((settings) => ({ ...settings, webcamId: deviceId }));
+  }, []);
 
   /**
    * References for
@@ -132,6 +155,47 @@ export function ConsolePage() {
   const [canPushToTalk, setCanPushToTalk] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [memoryKv, setMemoryKv] = useState<{ [key: string]: any }>({});
+  const [currentGypsyState, setCurrentGypsyState] = useState<{
+    conversation_stage:
+      | "idle"
+      | "need_major_arcana"
+      | "need_minor_arcana"
+      | "need_topic"
+      | "reading"
+      | "goodbye";
+  }>({
+    conversation_stage: "idle",
+  });
+
+  const onCardsSpotted = useCallback(
+    (hand: TarotCardHand) => {
+      console.log("onCardsSpotted", JSON.stringify({ hand }));
+      setCurrentGypsyState({ conversation_stage: "need_minor_arcana" });
+      clientRef().sendUserMessageContent([
+        {
+          type: `input_text`,
+          text: `Here are the cards I have: ${hand.cards
+            .map((card, i) => `${i + 1}: ${card.name}`)
+            .join(", ")}`,
+          // text: `For testing purposes, I want you to list ten car brands. Number each item, e.g. "one (or whatever number you are one): the item name".`,
+        },
+      ]);
+    },
+    [clientRef]
+  );
+  const cardSpotter = useCardSpotter(chatbotSettings, onCardsSpotted);
+
+  useEffect(() => {
+    console.log(
+      "conversation stage change",
+      currentGypsyState.conversation_stage
+    );
+    if (currentGypsyState.conversation_stage === "need_major_arcana") {
+      cardSpotter.setWatchMode(true);
+    } else {
+      cardSpotter.setWatchMode(false);
+    }
+  }, [cardSpotter, currentGypsyState.conversation_stage]);
 
   /**
    * Utility for formatting the timing of logs
@@ -161,6 +225,7 @@ export function ConsolePage() {
     },
     [wavStreamPlayerRef]
   );
+
   /**
    * Connect to conversation:
    * WavRecorder taks speech input, WavStreamPlayer output, client is API client
@@ -205,6 +270,7 @@ export function ConsolePage() {
     setRealtimeEvents([]);
     setItems([]);
     setMemoryKv({});
+    cardSpotter.setWatchMode(false);
 
     const client = clientRef();
     client.disconnect();
@@ -214,7 +280,7 @@ export function ConsolePage() {
 
     const wavStreamPlayer = wavStreamPlayerRef();
     await wavStreamPlayer.interrupt();
-  }, [clientRef, wavRecorderRef, wavStreamPlayerRef]);
+  }, [cardSpotter, clientRef, wavRecorderRef, wavStreamPlayerRef]);
 
   const deleteConversationItem = useCallback(
     async (id: string) => {
@@ -263,7 +329,14 @@ export function ConsolePage() {
       await wavRecorder.pause();
     }
     client.updateSession({
-      turn_detection: !autoListen ? null : { type: "server_vad" },
+      turn_detection: !autoListen
+        ? null
+        : {
+            type: "server_vad",
+            threshold: chatbotSettings.ortThreshold,
+            prefix_padding_ms: chatbotSettings.ortPrefixPaddingMs,
+            silence_duration_ms: chatbotSettings.ortSilenceDurationMs,
+          },
     });
     if (autoListen && client.isConnected()) {
       await wavRecorder.record((data) => client.appendInputAudio(data.mono));
@@ -385,35 +458,35 @@ export function ConsolePage() {
     client.updateSession({ modalities: ["text"] });
 
     // Add tools
-    client.addTool(
-      {
-        name: "set_memory",
-        description: "Saves important data about the user into memory.",
-        parameters: {
-          type: "object",
-          properties: {
-            key: {
-              type: "string",
-              description:
-                "The key of the memory value. Always use lowercase and underscores, no other characters.",
-            },
-            value: {
-              type: "string",
-              description: "Value can be anything represented as a string",
-            },
-          },
-          required: ["key", "value"],
-        },
-      },
-      async ({ key, value }: { [key: string]: any }) => {
-        setMemoryKv((memoryKv) => {
-          const newKv = { ...memoryKv };
-          newKv[key] = value;
-          return newKv;
-        });
-        return { ok: true };
-      }
-    );
+    // client.addTool(
+    //   {
+    //     name: "set_memory",
+    //     description: "Saves important data about the user into memory.",
+    //     parameters: {
+    //       type: "object",
+    //       properties: {
+    //         key: {
+    //           type: "string",
+    //           description:
+    //             "The key of the memory value. Always use lowercase and underscores, no other characters.",
+    //         },
+    //         value: {
+    //           type: "string",
+    //           description: "Value can be anything represented as a string",
+    //         },
+    //       },
+    //       required: ["key", "value"],
+    //     },
+    //   },
+    //   async ({ key, value }: { [key: string]: any }) => {
+    //     setMemoryKv((memoryKv) => {
+    //       const newKv = { ...memoryKv };
+    //       newKv[key] = value;
+    //       return newKv;
+    //     });
+    //     return { ok: true };
+    //   }
+    // );
     client.addTool(
       {
         name: "record_major_arcana_requested",
@@ -423,6 +496,7 @@ export function ConsolePage() {
       },
       async () => {
         console.log("record_major_arcana_requested");
+        setCurrentGypsyState({ conversation_stage: "need_major_arcana" });
         return { conversation_stage: "need_major_arcana" };
       }
     );
@@ -443,6 +517,7 @@ export function ConsolePage() {
       },
       async () => {
         console.log("record_major_arcana_received");
+        setCurrentGypsyState({ conversation_stage: "need_minor_arcana" });
         return { conversation_stage: "need_minor_arcana" };
       }
     );
@@ -455,6 +530,7 @@ export function ConsolePage() {
       },
       async () => {
         console.log("record_major_arcana_requested");
+        setCurrentGypsyState({ conversation_stage: "need_minor_arcana" });
         return { conversation_stage: "need_minor_arcana" };
       }
     );
@@ -479,6 +555,23 @@ export function ConsolePage() {
       },
       async ({ cards }: { cards: string[] }) => {
         console.log("record_minor_arcana_received", JSON.stringify(cards));
+        setCurrentGypsyState({ conversation_stage: "need_topic" });
+        return { conversation_stage: "reading" };
+      }
+    );
+    client.addTool(
+      {
+        name: "record_topic_received",
+        description:
+          "Records that the user has provided a topic on which to perform the reading.",
+        parameters: {
+          type: "object",
+          properties: { topic: { type: "string" } },
+        },
+      },
+      async ({ cards }: { cards: string[] }) => {
+        console.log("record_topic_received", JSON.stringify(cards));
+        setCurrentGypsyState({ conversation_stage: "reading" });
         return { conversation_stage: "reading" };
       }
     );
@@ -490,6 +583,7 @@ export function ConsolePage() {
       },
       async () => {
         console.log("record_reading_provided");
+        setCurrentGypsyState({ conversation_stage: "goodbye" });
         return { conversation_stage: "goodbye" };
       }
     );
@@ -509,8 +603,10 @@ export function ConsolePage() {
             client.deleteItem(item.id);
           });
           client.conversation.clear();
+          setCurrentGypsyState({ conversation_stage: "idle" });
           console.log("CONVERSATION CLEARED");
         }, 5000);
+        setCurrentGypsyState({ conversation_stage: "goodbye" });
         return { conversation_stage: "goodbye" };
       }
     );
@@ -568,6 +664,27 @@ export function ConsolePage() {
     };
   }, [clientRef, elevenlabsRef, wavStreamPlayerRef]);
 
+  const updateSessionTurnDetection = useCallback(
+    (
+      threshold: number,
+      prefix_padding_ms: number,
+      silence_duration_ms: number
+    ) => {
+      const client = clientRef();
+      client.updateSession({
+        turn_detection: canPushToTalk
+          ? null
+          : {
+              type: "server_vad",
+              threshold,
+              prefix_padding_ms,
+              silence_duration_ms,
+            },
+      });
+    },
+    [canPushToTalk, clientRef]
+  );
+
   /**
    * Render the application
    */
@@ -576,6 +693,38 @@ export function ConsolePage() {
       <div className="content-top">
         <div className="content-title">
           <span>Gypsy Console</span>
+          <div>
+            <SettingsDrawer
+              updateSettings={(s) => {
+                console.log(JSON.stringify(s));
+                setChatbotSettings((prev) => ({ ...prev, ...s }));
+                updateSessionTurnDetection(
+                  s.ortThreshold ?? chatbotSettings.ortThreshold,
+                  s.ortPrefixPaddingMs ?? chatbotSettings.ortPrefixPaddingMs,
+                  s.ortSilenceDurationMs ?? chatbotSettings.ortSilenceDurationMs
+                );
+                localStorage.setItem(
+                  "chatbotSettings",
+                  JSON.stringify({ ...chatbotSettings, ...s })
+                );
+              }}
+              settings={chatbotSettings}
+            />
+          </div>
+          <div>
+            <Button
+              onClick={() =>
+                setCurrentGypsyState((prev) => ({
+                  conversation_stage:
+                    prev.conversation_stage === "need_major_arcana"
+                      ? "need_minor_arcana"
+                      : "need_major_arcana",
+                }))
+              }
+            >
+              need major arcana
+            </Button>
+          </div>
         </div>
       </div>
       <div className="content-main">
@@ -762,16 +911,31 @@ export function ConsolePage() {
         </div>
         <div className="content-right">
           <div className="content-block map">
-            <div className="content-block-title">get_weather()</div>
-            <div className="content-block-title bottom">
-              {"TO BE USED LATER"}
-            </div>
             <div className="content-block-body full">
-              <div>{`ElevenLabs : ${elevenlabsRef().readyState}`}</div>
+              <div className="pt-8">{`ElevenLabs : ${
+                elevenlabsRef().readyState
+              }`}</div>
+              <div className="py-4">
+                conv state: {currentGypsyState.conversation_stage}
+              </div>
+              <div className="py-4">
+                {cardSpotter.isWatchMode ? "Watching" : "Not watching"}
+              </div>
+              <div>{`${JSON.stringify(cardSpotter.spotCardsResponse)}`}</div>
             </div>
+            <div className="content-block-body">
+              <div className="pt-8">
+                <WebcamSelector
+                  webcam={chatbotSettings.webcamId}
+                  setWebcam={setWebcam}
+                />
+              </div>
+            </div>{" "}
           </div>
           <div className="content-block kv">
-            <div className="content-block-title">set_memory()</div>
+            <div className="flex items-center justify-center mb-2">
+              <VideoInput deviceId={chatbotSettings.webcamId} />
+            </div>
             <div className="content-block-body content-kv">
               {JSON.stringify(memoryKv, null, 2)}
             </div>

@@ -5,7 +5,11 @@ import { motion } from "framer-motion";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import SettingsDrawer from "./settings-drawer";
-import { ChatbotSettings, DEFAULT_WEBCAM_ID } from "./types";
+import {
+  ChatbotSettings,
+  DEFAULT_CHATBOT_SETTINGS,
+  DEFAULT_WEBCAM_ID,
+} from "./types";
 import { useAudioRecord } from "./use-audio-record";
 import axios, { AxiosResponse } from "axios";
 import { useAudioPlayQueue } from "./use-audio-play-queue";
@@ -18,30 +22,7 @@ import {
 } from "@/lib/dtos";
 import VideoInput from "../video-input";
 import { useReadingRecognizer } from "./use-reading-recognizer";
-import { read } from "fs";
 
-const DEFAULT_CHATBOT_SETTINGS: ChatbotSettings = {
-  systemMessage: `You are Emma Thompson playing the role of a zany hilarious gypsy fortune teller.
-Keep all responses brief and five sentances or less.
-On the first repsonse, introduce yourself as Madame Zarina and give a mystical sounding greeting, 
-then ask the user what tarot cards they are holding and wait for reply from the user.
-When told the tarot cards, give only the combined summarized tarot card reading in three sentences or less.
-After giving the tarot card reading, forget the user's cards and reset conversation.
-Do not begin follow up responses with greetings.
-  `,
-  prompt: "<|audio|>respond as a roma gypsy",
-  temperature: 0.7,
-  maxTokens: 50,
-  silenceVolumeThreshold: 10,
-  sendVolumeThreshold: 20,
-  smoothingTimeConstant: 0.5,
-  maxRecordingTime: 20,
-  imageSendInterval: 5,
-  verifyImageSendInterval: 1,
-  readingStatusCheckInterval: 2,
-  errorInterval: 5,
-  webcamId: DEFAULT_WEBCAM_ID,
-};
 export default function AudioChatbot() {
   const [chatbotSettings, setChatbotSettings] = useState<ChatbotSettings>(
     DEFAULT_CHATBOT_SETTINGS
@@ -100,7 +81,8 @@ export default function AudioChatbot() {
     setAudioState("not-listening");
   }, []);
 
-  const { pushAudio, isPlaying } = useAudioPlayQueue(onAudioQueueEmpty);
+  const { pushAudio, isPlaying } = useAudioPlayQueue(() => {},
+  onAudioQueueEmpty);
 
   const readingRecognizer = useReadingRecognizer(chatbotSettings, pushAudio);
 

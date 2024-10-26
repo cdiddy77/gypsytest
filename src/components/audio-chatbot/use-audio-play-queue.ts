@@ -1,6 +1,10 @@
+import { sendTwilioMessage } from "@/lib/server-util";
 import React from "react";
 
-export function useAudioPlayQueue(onAudioQueueEmpty: () => void) {
+export function useAudioPlayQueue(
+  onAudioQueueBegin: () => void,
+  onAudioQueueEmpty: () => void
+) {
   const audioQueueRef = React.useRef<Blob[]>([]);
   const isPlayingRef = React.useRef(false);
   const queueLength = audioQueueRef.current.length;
@@ -21,6 +25,11 @@ export function useAudioPlayQueue(onAudioQueueEmpty: () => void) {
           playComplete = true;
         } catch (e) {
           console.error(`Error playing audio:${audioUrl.slice(0, 20)}`, e);
+          // THIS IS THE CASE THAT WE NEED TO WORRY ABOUT
+          sendTwilioMessage({
+            message: "ERROR PLAYING AUDIO",
+            phone_number: "+14257856047",
+          });
         }
         // When the audio finishes, clean up and play the next chunk
         if (playComplete) {
@@ -48,12 +57,15 @@ export function useAudioPlayQueue(onAudioQueueEmpty: () => void) {
 
   const pushAudio = React.useCallback(
     (audioBlob: Blob) => {
+      if (audioQueueRef.current.length === 0) {
+        onAudioQueueBegin();
+      }
       audioQueueRef.current.push(audioBlob);
       if (!isPlayingRef.current) {
         playNext();
       }
     },
-    [playNext]
+    [onAudioQueueBegin, playNext]
   );
 
   return React.useMemo(

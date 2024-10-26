@@ -23,8 +23,6 @@ interface Props {
 
 export default function SettingsDrawer({ settings, updateSettings }: Props) {
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
-  const [systemMessage, setSystemMessage] = React.useState<string>("");
-  const [prompt, setPrompt] = React.useState<string>("");
   const [temperature, setTemperature] = React.useState<number>(0.7);
   const [maxTokens, setMaxTokens] = React.useState<number | undefined>(100);
   const [silenceVolumeThreshold, setSilenceVolumeThreshold] =
@@ -36,50 +34,75 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
     React.useState(1);
   const [readingStatusCheckInterval, setReadingStatusCheckInterval] =
     React.useState(2);
+  const [webcam, setWebcam] = React.useState<string>("");
+  const [ortThreshold, setOrtThreshold] = React.useState<number>(0.5);
+  const [ortPrefixPaddingMs, setOrtPrefixPaddingMs] =
+    React.useState<number>(300);
+  const [ortSilenceDurationMs, setOrtSilenceDurationMs] =
+    React.useState<number>(500);
 
   const onOpenChange = React.useCallback(
     (isOpen: boolean) => {
       setIsSettingsOpen(isOpen);
       if (!isOpen) {
         updateSettings({
-          prompt,
           temperature,
           maxTokens: maxTokens || 100,
-          systemMessage,
           silenceVolumeThreshold,
           maxRecordingTime,
           sendVolumeThreshold,
+          imageSendInterval,
+          verifyImageSendInterval,
+          readingStatusCheckInterval,
+          webcamId: webcam,
+          ortThreshold,
+          ortPrefixPaddingMs,
+          ortSilenceDurationMs,
         });
       } else {
-        setSystemMessage(settings.systemMessage);
-        setPrompt(settings.prompt);
         setTemperature(settings.temperature);
         setMaxTokens(settings.maxTokens);
         setSilenceVolumeThreshold(settings.silenceVolumeThreshold);
         setMaxRecordingTime(settings.maxRecordingTime);
         setSendVolumeThreshold(settings.sendVolumeThreshold);
+        setImageSendInterval(settings.imageSendInterval);
+        setVerifyImageSendInterval(settings.verifyImageSendInterval);
+        setReadingStatusCheckInterval(settings.readingStatusCheckInterval);
+        setWebcam(settings.webcamId);
+        setOrtThreshold(settings.ortThreshold);
+        setOrtPrefixPaddingMs(settings.ortPrefixPaddingMs);
+        setOrtSilenceDurationMs(settings.ortSilenceDurationMs);
       }
     },
     [
+      imageSendInterval,
       maxRecordingTime,
       maxTokens,
-      prompt,
+      ortPrefixPaddingMs,
+      ortSilenceDurationMs,
+      ortThreshold,
+      readingStatusCheckInterval,
       sendVolumeThreshold,
+      settings.imageSendInterval,
       settings.maxRecordingTime,
       settings.maxTokens,
-      settings.prompt,
+      settings.ortPrefixPaddingMs,
+      settings.ortSilenceDurationMs,
+      settings.ortThreshold,
+      settings.readingStatusCheckInterval,
       settings.sendVolumeThreshold,
       settings.silenceVolumeThreshold,
-      settings.systemMessage,
       settings.temperature,
+      settings.verifyImageSendInterval,
+      settings.webcamId,
       silenceVolumeThreshold,
-      systemMessage,
       temperature,
       updateSettings,
+      verifyImageSendInterval,
+      webcam,
     ]
   );
 
-  const [webcam, setWebcam] = React.useState<string>("");
   return (
     <Drawer
       open={isSettingsOpen}
@@ -98,63 +121,57 @@ export default function SettingsDrawer({ settings, updateSettings }: Props) {
             <div>
               <WebcamSelector webcam={webcam} setWebcam={setWebcam} />
             </div>
-            <div>
-              <Label htmlFor="systemMessage" className="text-sm font-medium">
-                System Message
-              </Label>
-              <Textarea
-                id="systemMessage"
-                value={systemMessage}
-                rows={6}
-                onChange={(e) => setSystemMessage(e.target.value)}
-                placeholder="Enter your system message here"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="prompt" className="text-sm font-medium">
-                Prompt
-              </Label>
-              <Textarea
-                id="prompt"
-                value={prompt}
-                rows={2}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Enter your prompt here"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="temperature" className="text-sm font-medium">
-                Temperature: {temperature.toFixed(2)}
+            <div className="flex flex-row">
+              <Label
+                htmlFor="ortThreshold"
+                className="text-sm font-medium flex-1"
+              >
+                Threshold: {ortThreshold.toFixed(1)}
               </Label>
               <Slider
-                id="temperature"
-                min={0}
-                max={1}
-                step={0.01}
-                value={[temperature]}
-                onValueChange={(value) => setTemperature(value[0])}
-                className="mt-1"
+                id="ortThreshold"
+                min={0.1}
+                max={0.9}
+                step={0.1}
+                value={[ortThreshold]}
+                onValueChange={(value) => setOrtThreshold(value[0])}
+                className="mt-1 flex-1"
               />
             </div>
-            <div>
-              <Label htmlFor="max-tokens" className="text-sm font-medium">
-                Max Tokens
+            <div className="flex flex-row">
+              <Label
+                htmlFor="ortPrefixPaddingMs"
+                className="text-sm font-medium flex-1"
+              >
+                Prefix Padding: {ortPrefixPaddingMs.toFixed(0)}ms
               </Label>
-              <Input
-                id="max-tokens"
-                type="number"
-                min={1}
-                value={maxTokens}
-                onChange={(e) =>
-                  setMaxTokens(
-                    e.target.value ? parseInt(e.target.value) : undefined
-                  )
-                }
-                className="mt-1"
+              <Slider
+                id="ortPrefixPaddingMs"
+                min={50}
+                max={1500}
+                step={50}
+                value={[ortPrefixPaddingMs]}
+                onValueChange={(value) => setOrtPrefixPaddingMs(value[0])}
+                className="mt-1 flex-1"
               />
             </div>
+            <div className="flex flex-row">
+              <Label
+                htmlFor="ortSilenceDurationMs"
+                className="text-sm font-medium flex-1"
+              >
+                Silence Duration: {ortSilenceDurationMs.toFixed()}ms
+              </Label>
+              <Slider
+                id="ortSilenceDurationMs"
+                min={50}
+                max={1500}
+                step={50}
+                value={[ortSilenceDurationMs]}
+                onValueChange={(value) => setOrtSilenceDurationMs(value[0])}
+                className="mt-1 flex-1"
+              />
+            </div>{" "}
             <hr className="border-gray-200 my-4" />
             <div className="flex flex-row">
               <Label

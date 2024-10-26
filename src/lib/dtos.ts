@@ -14,12 +14,13 @@ export type ReadingStatus =
   | "reading_tts_requested"
   | "reading_tts_complete";
 
-interface TarotCard {
+export interface TarotCard {
   name: string;
   description: string;
+  arcana?: string | null;
 }
 
-interface TarotCardHand {
+export interface TarotCardHand {
   cards: TarotCard[];
 }
 
@@ -38,4 +39,9 @@ export interface UploadImageResponse {
 
 export interface TaskStatusResponse {
   status: ReadingTaskState;
+}
+
+export interface SpotCardsResponse {
+  hand?: TarotCardHand | null;
+  hand_verified: boolean;
 }

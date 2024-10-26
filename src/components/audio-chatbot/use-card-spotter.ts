@@ -3,10 +3,12 @@ import React from "react";
 import { ChatbotSettings, DEFAULT_WEBCAM_ID } from "./types";
 import { wait } from "@/lib/utils";
 import axios from "axios";
+import { randomExclamation } from "@/lib/prompts";
 
 export function useCardSpotter(
   settings: ChatbotSettings,
-  onCardsSpotted: (hand: TarotCardHand) => void
+  onCardsSpotted: (hand: TarotCardHand) => void,
+  pushAudio: (audio: Blob | string) => void
 ) {
   const onCardsSpottedRef = React.useRef(onCardsSpotted);
 
@@ -66,6 +68,8 @@ export function useCardSpotter(
             "Cards Spotted so Finished running reading state machine"
           );
           return;
+        } else {
+          pushAudio(randomExclamation());
         }
       } catch (e) {
         await wait(settingsRef.current.errorInterval * 1000);

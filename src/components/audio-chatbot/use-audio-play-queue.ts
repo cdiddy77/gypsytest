@@ -5,7 +5,7 @@ export function useAudioPlayQueue(
   onAudioQueueBegin: () => void,
   onAudioQueueEmpty: () => void
 ) {
-  const audioQueueRef = React.useRef<Blob[]>([]);
+  const audioQueueRef = React.useRef<(Blob | string)[]>([]);
   const isPlayingRef = React.useRef(false);
   const queueLength = audioQueueRef.current.length;
 
@@ -16,7 +16,10 @@ export function useAudioPlayQueue(
 
       // Create an audio URL and play it
       if (nextAudioBlob) {
-        const audioUrl = URL.createObjectURL(nextAudioBlob);
+        const isBlob = nextAudioBlob instanceof Blob;
+        const audioUrl = !isBlob
+          ? nextAudioBlob
+          : URL.createObjectURL(nextAudioBlob);
         const audio = new Audio(audioUrl);
         let playComplete = false;
         try {
@@ -36,7 +39,9 @@ export function useAudioPlayQueue(
           try {
             await new Promise<void>((resolve) => {
               audio.onended = () => {
-                URL.revokeObjectURL(audioUrl);
+                if (isBlob) {
+                  URL.revokeObjectURL(audioUrl);
+                }
                 console.log("Audio ended", audioQueueRef.current.length);
                 resolve();
               };
@@ -45,7 +50,9 @@ export function useAudioPlayQueue(
             console.error("Error waiting for audio to end", e);
           }
         } else {
-          URL.revokeObjectURL(audioUrl);
+          if (isBlob) {
+            URL.revokeObjectURL(audioUrl);
+          }
           console.log("failure playing audio", audioQueueRef.current.length);
         }
       }
@@ -56,7 +63,7 @@ export function useAudioPlayQueue(
   }, [onAudioQueueEmpty]);
 
   const pushAudio = React.useCallback(
-    (audioBlob: Blob) => {
+    (audioBlob: Blob | string) => {
       if (audioQueueRef.current.length === 0) {
         onAudioQueueBegin();
       }

@@ -16,7 +16,7 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { RealtimeClient } from "@openai/realtime-api-beta";
 import { ItemType } from "@openai/realtime-api-beta/dist/lib/client.js";
 import { WavRecorder, WavStreamPlayer } from "../lib/wavtools/index";
-import { instructions } from "@/lib/prompts";
+import { instructions, randomExclamation } from "@/lib/prompts";
 import { WavRenderer } from "@/lib/wav_renderer";
 
 // import { X, Edit, Zap, ArrowUp, ArrowDown } from 'react-feather';
@@ -183,7 +183,11 @@ export function ConsolePage() {
     },
     [clientRef]
   );
-  const cardSpotter = useCardSpotter(chatbotSettings, onCardsSpotted);
+  const cardSpotter = useCardSpotter(
+    chatbotSettings,
+    onCardsSpotted,
+    pushAudio
+  );
 
   useEffect(() => {
     console.log(
@@ -722,7 +726,16 @@ export function ConsolePage() {
                 }))
               }
             >
-              need major arcana
+              {`${
+                currentGypsyState.conversation_stage === "need_major_arcana"
+                  ? "need minor arcana"
+                  : "need major arcana"
+              }`}
+            </Button>
+          </div>
+          <div>
+            <Button onClick={() => pushAudio(randomExclamation())}>
+              exclamation
             </Button>
           </div>
         </div>

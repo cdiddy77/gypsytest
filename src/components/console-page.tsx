@@ -177,7 +177,6 @@ export function ConsolePage() {
           text: `Here are the cards I have: ${hand.cards
             .map((card, i) => `${i + 1}: ${card.name}`)
             .join(", ")}`,
-          // text: `For testing purposes, I want you to list ten car brands. Number each item, e.g. "one (or whatever number you are one): the item name".`,
         },
       ]);
     },

@@ -182,11 +182,11 @@ export function ConsolePage() {
     },
     [clientRef]
   );
-  const cardSpotter = useCardSpotter(
-    chatbotSettings,
-    onCardsSpotted,
-    pushAudio
-  );
+  // const cardSpotter = useCardSpotter(
+  //   chatbotSettings,
+  //   onCardsSpotted,
+  //   pushAudio
+  // );
 
   useEffect(() => {
     console.log(
@@ -194,11 +194,11 @@ export function ConsolePage() {
       currentGypsyState.conversation_stage
     );
     if (currentGypsyState.conversation_stage === "need_major_arcana") {
-      cardSpotter.setWatchMode(true);
+      // cardSpotter.setWatchMode(true);
     } else {
-      cardSpotter.setWatchMode(false);
+      // cardSpotter.setWatchMode(false);
     }
-  }, [cardSpotter, currentGypsyState.conversation_stage]);
+  }, [currentGypsyState.conversation_stage]);
 
   /**
    * Utility for formatting the timing of logs
@@ -273,7 +273,7 @@ export function ConsolePage() {
     setRealtimeEvents([]);
     setItems([]);
     setMemoryKv({});
-    cardSpotter.setWatchMode(false);
+    // cardSpotter.setWatchMode(false);
 
     const client = clientRef();
     client.disconnect();
@@ -283,7 +283,7 @@ export function ConsolePage() {
 
     const wavStreamPlayer = wavStreamPlayerRef();
     await wavStreamPlayer.interrupt();
-  }, [cardSpotter, clientRef, wavRecorderRef, wavStreamPlayerRef]);
+  }, [clientRef, wavRecorderRef, wavStreamPlayerRef]);
 
   const deleteConversationItem = useCallback(
     async (id: string) => {
@@ -931,9 +931,9 @@ export function ConsolePage() {
                 conv state: {currentGypsyState.conversation_stage}
               </div>
               <div className="py-4">
-                {cardSpotter.isWatchMode ? "Watching" : "Not watching"}
+                {/* {cardSpotter.isWatchMode ? "Watching" : "Not watching"} */}
               </div>
-              <div>{`${JSON.stringify(cardSpotter.spotCardsResponse)}`}</div>
+              {/* <div>{`${JSON.stringify(cardSpotter.spotCardsResponse)}`}</div> */}
             </div>
             <div className="content-block-body">
               <div className="pt-8">

@@ -459,6 +459,7 @@ export function ConsolePage() {
     // Set transcription, otherwise we don't get user transcriptions back
     client.updateSession({ input_audio_transcription: { model: "whisper-1" } });
     client.updateSession({ modalities: ["text"] });
+    client.updateSession({ temperature: 0.95 });
 
     // Add tools
     // client.addTool(

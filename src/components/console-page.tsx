@@ -928,6 +928,7 @@ export function ConsolePage() {
               <div className="pt-8">{`ElevenLabs : ${
                 elevenlabsRef().readyState
               }`}</div>
+              <div className="py-4">version: 0.95</div>
               <div className="py-4">
                 conv state: {currentGypsyState.conversation_stage}
               </div>

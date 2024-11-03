@@ -68,10 +68,24 @@ export function ConsolePage() {
    * Ask user for API Key
    * If we're using the local relay server, we don't need this
    */
-  const apiKey = LOCAL_RELAY_SERVER_URL
+  const openaiApiKey = LOCAL_RELAY_SERVER_URL
     ? ""
-    : process.env.NEXT_PUBLIC_OPENAI_API_KEY || "";
+    : localStorage.getItem("tmp::voice_api_key") ||
+      prompt("OpenAI API Key") ||
+      "";
 
+  if (openaiApiKey !== "") {
+    localStorage.setItem("tmp::voice_api_key", openaiApiKey);
+  }
+
+  const elevenLabsApiKey =
+    localStorage.getItem("tmp::elevenlabs_api_key") ||
+    prompt("ElevenLabs API Key") ||
+    "";
+
+  if (elevenLabsApiKey !== "") {
+    localStorage.setItem("tmp::elevenlabs_api_key", elevenLabsApiKey);
+  }
   /**
    * Instantiate:
    * - WavRecorder (speech input)
@@ -90,7 +104,7 @@ export function ConsolePage() {
       LOCAL_RELAY_SERVER_URL
         ? { url: LOCAL_RELAY_SERVER_URL }
         : {
-            apiKey: apiKey,
+            apiKey: openaiApiKey,
             dangerouslyAllowAPIKeyInBrowser: true,
           }
     );
@@ -98,7 +112,7 @@ export function ConsolePage() {
 
   const elevenlabsRef = useLazyRef<ElevenLabsClient>(() => {
     console.log("creating new ElevenLabsClient");
-    return new ElevenLabsClient();
+    return new ElevenLabsClient(elevenLabsApiKey);
   });
   const audioPlayQueueEmpty = useCallback(async () => {
     console.log("audioPlayQueueEmpty");

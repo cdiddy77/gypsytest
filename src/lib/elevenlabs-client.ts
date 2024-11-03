@@ -29,7 +29,7 @@ export class ElevenLabsClient {
   // const socket = new WebSocket(wsUrl);
   private _audioConsumer: (audioBlob: Blob) => void = () => {};
 
-  constructor() {
+  constructor(apiKey: string) {
     this._lastSendTime = Date.now();
     this._socket.subscribe("open", (s, event) => {
       console.log("WebSocket Opened");
@@ -39,7 +39,7 @@ export class ElevenLabsClient {
           stability: 0.5,
           similarity_boost: 0.8,
         },
-        xi_api_key: process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY || "", // replace with your API key
+        xi_api_key: apiKey,
       };
 
       s.send(JSON.stringify(bosMessage));

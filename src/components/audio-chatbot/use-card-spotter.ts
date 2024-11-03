@@ -77,7 +77,7 @@ export function useCardSpotter(
       isRunningRef.current = false;
       console.log("Finished running reading state machine");
     }
-  }, []);
+  }, [pushAudio]);
 
   const setWatchMode = React.useCallback(
     (isWatchMode: boolean) => {

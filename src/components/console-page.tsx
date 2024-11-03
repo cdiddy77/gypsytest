@@ -1,3 +1,4 @@
+"use client";
 /**
  * Running a local relay server will allow you to hide your API key
  * and run custom logic on the server
@@ -68,22 +69,23 @@ export function ConsolePage() {
    * Ask user for API Key
    * If we're using the local relay server, we don't need this
    */
-  const openaiApiKey = LOCAL_RELAY_SERVER_URL
-    ? ""
-    : localStorage.getItem("tmp::voice_api_key") ||
-      prompt("OpenAI API Key") ||
-      "";
+  const openaiApiKey =
+    (typeof window !== "undefined" &&
+      localStorage.getItem("tmp::voice_api_key")) ||
+    (typeof window !== "undefined" && prompt("OpenAI API Key")) ||
+    "";
 
-  if (openaiApiKey !== "") {
+  if (openaiApiKey !== "" && typeof window !== "undefined") {
     localStorage.setItem("tmp::voice_api_key", openaiApiKey);
   }
 
   const elevenLabsApiKey =
-    localStorage.getItem("tmp::elevenlabs_api_key") ||
-    prompt("ElevenLabs API Key") ||
+    (typeof window !== "undefined" &&
+      localStorage.getItem("tmp::elevenlabs_api_key")) ||
+    (typeof window !== "undefined" && prompt("ElevenLabs API Key")) ||
     "";
 
-  if (elevenLabsApiKey !== "") {
+  if (elevenLabsApiKey !== "" && typeof window !== "undefined") {
     localStorage.setItem("tmp::elevenlabs_api_key", elevenLabsApiKey);
   }
   /**
